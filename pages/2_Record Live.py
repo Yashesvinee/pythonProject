@@ -7,13 +7,15 @@ from sys import prefix
 import av
 import mediapipe as mp
 import cv2
+import requests
 import streamlit as st
 from aiortc.contrib.media import MediaRecorder
+from streamlit_lottie import st_lottie
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase,WebRtcMode
 from streamlit_extras.switch_page_button import switch_page
 
 lock=threading.Lock()
-st.markdown("# Live monitoring")
+
 mpPose = mp.solutions.pose
 pose = mpPose.Pose()
 mpDraw = mp.solutions.drawing_utils
@@ -33,15 +35,14 @@ def find_angle(x1,y1,x2,y2):
     return int(deg)
 
 
-RECORD_DIR = Path("../records")
-RECORD_DIR.mkdir(exist_ok=True)
-out_file = RECORD_DIR / f"output.mp4"
+
+out_file = Path("output.mp4")
 def out_recorder_factory() -> MediaRecorder:
     return MediaRecorder(str(out_file), format="mp4")
 
-class VideoTransformer(VideoTransformerBase):
+class VideoTransformer:
 
-    def transform(self, frame):
+    def recv(self, frame):
         image = frame.to_ndarray(format="bgr24")
         global timer,playing
 
@@ -68,7 +69,7 @@ class VideoTransformer(VideoTransformerBase):
                 x_y_z.append(l.z)
                 x_y_z.append(l.visibility)
                 pose1.append(x_y_z)
-                # cx, cy = int(l.x*w), int(l.y*h)
+
 
         Nose = pose1[0]
         L_Neck = pose1[11]
@@ -98,14 +99,35 @@ class VideoTransformer(VideoTransformerBase):
         font = cv2.FONT_HERSHEY_SIMPLEX
 
         string_reba = str(score)
+
         cv2.putText(image, string_reba, (0, h - 20), font, 0.5, (0, 255, 0), 2)
 
         #video_output.write(image)
-        return image
+        return av.VideoFrame.from_ndarray(image, format="bgr24")
 
 timer=0
 
-ctx=webrtc_streamer(key="live", video_transformer_factory=VideoTransformer,out_recorder_factory=out_recorder_factory,
+
+url = requests.get(
+        "https://assets4.lottiefiles.com/packages/lf20_wEt2nn.json")
+
+url_json = dict()
+
+if url.status_code == 200:
+    url_json = url.json()
+else:
+    print("Error in the URL")
+
+col1, col2= st.columns([14,2])
+
+with col1:
+    st.markdown("# Live monitoring")
+
+with col2:
+    st_lottie(url_json, height=100)
+
+
+ctx=webrtc_streamer(key="live", video_processor_factory=VideoTransformer,out_recorder_factory=out_recorder_factory,
         rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
 if out_file.exists():
         with out_file.open("rb") as f:

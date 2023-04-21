@@ -7,7 +7,11 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import math
+import json
+import requests
 
+
+from streamlit_lottie import st_lottie
 import cv2
 import mediapipe as mp
 from score_calc_func import pose_estimation
@@ -35,9 +39,9 @@ def find_angle(x1,y1,x2,y2):
     return int(deg)
 def image_pose_estimation(name):
 
-    score=pose_estimation(name)
+    score,image=pose_estimation(name)
     print(score)
-    return score
+    return score,image
     #if rula and reba:
      ##       pgi.alert("Posture not proper in upper body","Warning")
      #   elif int(reba)>4:
@@ -94,7 +98,7 @@ def video_pose_estimation(cap):
 
         pose1 = []
         if keypoints.pose_landmarks:
-            # mpDraw.draw_landmarks(img, keypoints.pose_landmarks, mpPose.POSE_CONNECTIONS)
+            mpDraw.draw_landmarks(image, keypoints.pose_landmarks, mpPose.POSE_CONNECTIONS)
             for id, l in enumerate(keypoints.pose_landmarks.landmark):
                 x_y_z = []
                 h, w, c = image.shape
@@ -103,7 +107,11 @@ def video_pose_estimation(cap):
                 x_y_z.append(l.z)
                 x_y_z.append(l.visibility)
                 pose1.append(x_y_z)
-                # cx, cy = int(l.x*w), int(l.y*h)
+                cx, cy = int(l.x * w), int(l.y * h)
+                if id % 2 == 0:
+                    cv2.circle(image, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
+                else:
+                    cv2.circle(image, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
 
         if(cap==0):
             Nose = pose1[0]
@@ -150,14 +158,39 @@ def video_pose_estimation(cap):
 
 
 def main_loop():
+    st.set_page_config(
+        page_title="Posture Risk Assessment",
+        page_icon="🧊",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    url = requests.get(
+        "https://assets2.lottiefiles.com/packages/lf20_cmaqoazd.json")
+    # Creating a blank dictionary to store JSON file,
+    # as their structure is similar to Python Dictionary
+    url_json = dict()
 
-    st.title("Posture risk assessment Tool")
-    st.subheader("Get instant results on how risky your posture is!!!")
-    st.text("Upload an image or video to get your results.")
-    st.text("To record and get results for a live video, navigate to Live Monitoring.")
-    live=st.button("Go to Live")
-    if live:
-        switch_page("livepage")
+    if url.status_code == 200:
+        url_json = url.json()
+    else:
+        print("Error in the URL")
+
+    col1, col2 = st.columns([40,26])
+
+    with col1:
+        st.title("Posture risk assessment Tool")
+        st.subheader("Get instant results on how risky your posture is!!!")
+        st.text("Upload an image or video to get your results.")
+        st.text("To record and get results for a live video, navigate to Live Monitoring.")
+        live = st.button("Go to Live")
+        if live:
+            switch_page("record live")
+
+    with col2:
+        st_lottie(url_json, height=300)
+
+
+
 
     image_file = st.file_uploader("Upload Your Image", type=['jpg', 'png', 'jpeg'])
     video_file = st.file_uploader("Upload Your Video", type=['mp4', 'mov', 'mpeg'])
@@ -165,8 +198,8 @@ def main_loop():
     if image_file:
         filebytes=np.asarray(bytearray(image_file.read()),dtype=np.uint8)
         img = cv2.imdecode(filebytes, 1)
-        st.image(img,channels='BGR')
-        score = image_pose_estimation(img)
+        score,image = image_pose_estimation(img)
+        st.image(image, channels='BGR')
         st.write(score)
         # with open(image_file.name,'wb') as f:
         #     filebytes=np.asarray(bytearray(image_file.read()),dtype=np.uint8)

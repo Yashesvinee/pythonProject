@@ -735,7 +735,7 @@ def pose_estimation(img):
                 cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
     # img = cv2.resize(img, (700, 700))
     score = angle_calc(pose1)
-    return score
+    return score,img
 
 
 
