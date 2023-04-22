@@ -1,5 +1,7 @@
 import sys
 import tempfile
+from turtle import width
+
 from streamlit_extras.switch_page_button import switch_page
 import av
 from streamlit_webrtc import webrtc_streamer
@@ -9,7 +11,6 @@ from PIL import Image
 import math
 import json
 import requests
-
 
 from streamlit_lottie import st_lottie
 import cv2
@@ -24,33 +25,38 @@ mpPose = mp.solutions.pose
 pose = mpPose.Pose()
 mpDraw = mp.solutions.drawing_utils
 
+
 def findDistance(x1, y1, x2, y2):
     dist = m.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     return dist
 
+
 def findmid(x1, y1, x2, y2):
-    x=(x1+x2)/2
-    y=(y1+y2)/2
-    return x,y
+    x = (x1 + x2) / 2
+    y = (y1 + y2) / 2
+    return x, y
 
-def find_angle(x1,y1,x2,y2):
-    m=(y2-y1)/(x2-x1)
-    deg=abs(math.degrees(math.atan(m)))
+
+def find_angle(x1, y1, x2, y2):
+    m = (y2 - y1) / (x2 - x1)
+    deg = abs(math.degrees(math.atan(m)))
     return int(deg)
-def image_pose_estimation(name):
 
-    score,image=pose_estimation(name)
+
+def image_pose_estimation(name):
+    score, image = pose_estimation(name)
     print(score)
-    return score,image
-    #if rula and reba:
-     ##       pgi.alert("Posture not proper in upper body","Warning")
-     #   elif int(reba)>4:
+    return score, image
+    # if rula and reba:
+    ##       pgi.alert("Posture not proper in upper body","Warning")
+    #   elif int(reba)>4:
     #        pgi.alert("Posture not proper in your body","Warning")
-    #variable1.set("Rapid Upper Limb Assessment Score : "+rula)
-    #variable2.set("Rapid Entire Body Score : "+reba)
-    #root.update()
+    # variable1.set("Rapid Upper Limb Assessment Score : "+rula)
+    # variable2.set("Rapid Entire Body Score : "+reba)
+    # root.update()
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 def video_pose_estimation(cap):
     # For webcam input replace file name with 0.
@@ -58,7 +64,7 @@ def video_pose_estimation(cap):
     # cap = cv2.VideoCapture(name)
     good_frames = 0
     bad_frames = 0
-    if cap=='a':
+    if cap == 'a':
         return
 
     # Meta.
@@ -95,7 +101,6 @@ def video_pose_estimation(cap):
         lm = keypoints.pose_landmarks
         lmPose = mpPose.PoseLandmark
 
-
         pose1 = []
         if keypoints.pose_landmarks:
             mpDraw.draw_landmarks(image, keypoints.pose_landmarks, mpPose.POSE_CONNECTIONS)
@@ -113,7 +118,7 @@ def video_pose_estimation(cap):
                 else:
                     cv2.circle(image, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
 
-        if(cap==0):
+        if (cap == 0):
             Nose = pose1[0]
             L_Neck = pose1[11]
             R_Neck = pose1[12]
@@ -123,32 +128,33 @@ def video_pose_estimation(cap):
             L_Eye = pose1[2]
             offset = findDistance(L_Neck[0], L_Neck[1], R_Neck[0], R_Neck[1])
             neckx, necky = findmid(L_Neck[0], L_Neck[1], R_Neck[0], R_Neck[1])
-            eyex,eyey=findmid(L_Eye[0],L_Eye[1],R_Eye[0],R_Eye[1])
-            if int(offset*100)<10:
+            eyex, eyey = findmid(L_Eye[0], L_Eye[1], R_Eye[0], R_Eye[1])
+            if int(offset * 100) < 10:
                 neck_inclination = find_angle(neckx, necky, eyex, eyey)
             else:
-                neck_inclination = find_angle(neckx,necky,Nose[0],Nose[1])
-            torso_inclination= find_angle(L_Neck[0],L_Neck[1],R_Neck[0],R_Neck[1])
+                neck_inclination = find_angle(neckx, necky, Nose[0], Nose[1])
+            torso_inclination = find_angle(L_Neck[0], L_Neck[1], R_Neck[0], R_Neck[1])
             score = {}
             score['neck'] = neck_inclination
             score['trunk'] = torso_inclination
-            if (score['neck'] in range(70,74) and int(offset*100)<10) or (score['neck'] in range(87,90)) or score['trunk'] in range(0,3):
+            if (score['neck'] in range(70, 74) and int(offset * 100) < 10) or (score['neck'] in range(87, 90)) or score[
+                'trunk'] in range(0, 3):
                 pass
         else:
             try:
-                score= angle_calc(pose1)
+                score = angle_calc(pose1)
             except:
                 continue
         print(score)
-        font=cv2.FONT_HERSHEY_SIMPLEX
+        font = cv2.FONT_HERSHEY_SIMPLEX
 
         string_reba = str(score)
-        cv2.putText(image, string_reba, (0, h - 20), font, 0.5, (0,255,0), 2)
+        cv2.putText(image, string_reba, (0, h - 50), font, 0.5, (0, 255, 0), 2)
 
         video_output.write(image)
 
         # Display.
-        #cv2.imshow('MediaPipe Pose', image)
+        # cv2.imshow('MediaPipe Pose', image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             return video_output
 
@@ -175,7 +181,7 @@ def main_loop():
     else:
         print("Error in the URL")
 
-    col1, col2 = st.columns([40,26])
+    col1, col2 = st.columns([40, 26])
 
     with col1:
         st.title("Posture risk assessment Tool")
@@ -189,37 +195,26 @@ def main_loop():
     with col2:
         st_lottie(url_json, height=300)
 
-
-
-
     image_file = st.file_uploader("Upload Your Image", type=['jpg', 'png', 'jpeg'])
     video_file = st.file_uploader("Upload Your Video", type=['mp4', 'mov', 'mpeg'])
 
     if image_file:
-        filebytes=np.asarray(bytearray(image_file.read()),dtype=np.uint8)
+        filebytes = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
         img = cv2.imdecode(filebytes, 1)
-        score,image = image_pose_estimation(img)
+        score, image = image_pose_estimation(img)
         st.image(image, channels='BGR')
         st.write(score)
-        # with open(image_file.name,'wb') as f:
-        #     filebytes=np.asarray(bytearray(image_file.read()),dtype=np.uint8)
-        #     img=cv2.imdecode(filebytes,1)
-        #     score = image_pose_estimation(img)
-        #     # img = Image.open(image_file)
-        #     st.image(img,channels="BGR")
-        #     # img_array=np.array(img)
-        #     # score = image_pose_estimation(img_array)
-        #     st.write(score)
+
     elif video_file:
-        tfile=tempfile.NamedTemporaryFile(delete=False)
+        tfile = tempfile.NamedTemporaryFile(delete=False)
         tfile.write(video_file.read())
-        analyse=st.button(label="Analyse")
+        analyse = st.button(label="Analyse")
         if analyse:
-           video_pose_estimation(cv2.VideoCapture(tfile.name))
-           vf=open('output.mp4','rb')
-           st.video(vf,format='video/mp4')
-           with open('output.mp4','rb') as vf:
-               btn= st.download_button(label='download',data=vf,file_name='output.mp4',mime='video/mp4')
+            video_pose_estimation(cv2.VideoCapture(tfile.name))
+            vf = open('output.mp4', 'rb')
+            st.video(vf, format='video/mp4')
+            with open('output.mp4', 'rb') as vf:
+                btn = st.download_button(label='download', data=vf, file_name='output.mp4', mime='video/mp4')
 
 
 if __name__ == '__main__':
